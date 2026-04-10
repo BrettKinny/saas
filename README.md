@@ -8,22 +8,24 @@ A Vercel Edge Function that analyzes your notifications, picks the most fitting 
 
 ## Features
 
-- Rewrites messages using Claude Sonnet via OpenRouter API in the voice of:
-  - Tony Soprano
-  - Paulie Walnuts
-  - Christopher Moltisanti
-  - Silvio Dante
-  - Uncle Junior
-  - Bobby Baccalieri
+- Analyzes message sentiment via Claude Sonnet to pick the best-matching character:
+  - Tony Soprano — authority, power, leadership issues
+  - Paulie Walnuts — paranoia, suspicion, conspiracy
+  - Christopher Moltisanti — drama, existential crises, creative problems
+  - Silvio Dante — strategic issues, loyalty, being pulled back into things
+  - Uncle Junior — disrespect, old-school gripes, health complaints
+  - Bobby Baccalieri — gentle problems, food, wholesome concerns
+- Rewrites the message in that character's voice via LLM
 - Searches Tenor for relevant Sopranos GIFs based on character and message severity
 - Posts to Discord webhooks with character avatars and embedded GIFs
 - Severity-based color coding (critical=red, error=light red, warning=orange, info=blue)
+- Falls back to random character selection if no API key is configured
 
 ## API Endpoint
 
 ### POST /api/notify
 
-Rewrite a notification message in a random Sopranos character's voice and post to Discord.
+Analyze a notification's sentiment, pick the best-matching Sopranos character, rewrite the message in their voice, and post to Discord.
 
 **Headers:**
 - `x-saas-destination` (required): Discord webhook URL
@@ -71,7 +73,7 @@ Set these in your Vercel project settings:
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `OPENROUTER_API_KEY` | Yes | API key from [OpenRouter](https://openrouter.ai/keys) |
+| `OPENROUTER_API_KEY` | No | API key from [OpenRouter](https://openrouter.ai/keys). Without it, character selection is random and messages get a catchphrase prefix instead of a full rewrite. |
 | `TENOR_API_KEY` | No | API key from [Tenor](https://developers.google.com/tenor/guides/quickstart). Has public fallback. |
 
 ## Deployment
