@@ -4,7 +4,7 @@ A Vercel Edge Function that analyzes your notifications, picks the most fitting 
 
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FBrettKinny%2Fsaas&env=OPENROUTER_API_KEY&envDescription=API%20keys%20needed%20for%20SaaS&envLink=https%3A%2F%2Fopenrouter.ai%2Fkeys)
 
-https://github.com/BrettKinny/saas/raw/main/demo.mp4
+![Demo](demo.gif)
 
 ## Features
 
