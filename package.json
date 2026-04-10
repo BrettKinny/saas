@@ -2,7 +2,7 @@
   "name": "sopranos-as-a-service",
   "version": "1.0.0",
   "description": "SaaS - Sopranos as a Service: Rewrite your notifications in the voice of Sopranos characters",
-  "private": true,
+  "private": false,
   "scripts": {
     "dev": "vercel dev",
     "build": "vercel build",
