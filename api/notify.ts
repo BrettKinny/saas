@@ -54,19 +54,50 @@ interface NotifyRequest {
   severity?: 'info' | 'warning' | 'error' | 'critical';
 }
 
+// Get a random character (used as fallback when LLM is unavailable)
+function getRandomCharacter() {
+  return CHARACTERS[Math.floor(Math.random() * CHARACTERS.length)];
+}
+
+// Shared OpenRouter API client
+async function callOpenRouter(
+  prompt: string,
+  options: { max_tokens?: number; temperature?: number } = {}
+): Promise<string | null> {
+  const apiKey = process.env.OPENROUTER_API_KEY;
+  if (!apiKey) return null;
+
+  const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+      'HTTP-Referer': 'https://sopranos-as-a-service.vercel.app',
+      'X-Title': 'Sopranos as a Service',
+    },
+    body: JSON.stringify({
+      model: 'anthropic/claude-sonnet-4',
+      messages: [{ role: 'user', content: prompt }],
+      max_tokens: options.max_tokens ?? 256,
+      temperature: options.temperature ?? 0.8,
+    }),
+  });
+
+  if (!response.ok) {
+    console.error('OpenRouter API error:', await response.text());
+    return null;
+  }
+
+  const data = await response.json();
+  return data.choices?.[0]?.message?.content?.trim() || null;
+}
+
 // Analyze message sentiment and pick the best-matching character via LLM
 async function selectCharacterBySentiment(
   message: string,
   source?: string,
   severity?: string
 ): Promise<typeof CHARACTERS[0]> {
-  const apiKey = process.env.OPENROUTER_API_KEY;
-
-  if (!apiKey) {
-    // Fallback to random if no API key
-    return CHARACTERS[Math.floor(Math.random() * CHARACTERS.length)];
-  }
-
   const characterDescriptions = CHARACTERS.map(
     (c) => `- ${c.name}: ${c.traits}`
   ).join('\n');
@@ -84,56 +115,27 @@ ${characterDescriptions}
 Respond with ONLY the character's full name, nothing else. Pick the character whose personality best matches the vibe of this message — e.g. paranoid messages for Paulie, dramatic ones for Christopher, authority/power issues for Tony, old-school gripes for Junior, etc.`;
 
   try {
-    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-        'HTTP-Referer': 'https://sopranos-as-a-service.vercel.app',
-        'X-Title': 'Sopranos as a Service',
-      },
-      body: JSON.stringify({
-        model: 'anthropic/claude-sonnet-4',
-        messages: [{ role: 'user', content: prompt }],
-        max_tokens: 50,
-        temperature: 0.5,
-      }),
-    });
-
-    if (!response.ok) {
-      console.error('Character selection API error:', await response.text());
-      return CHARACTERS[Math.floor(Math.random() * CHARACTERS.length)];
-    }
-
-    const data = await response.json();
-    const selectedName = data.choices?.[0]?.message?.content?.trim();
+    const selectedName = await callOpenRouter(prompt, { max_tokens: 50, temperature: 0.5 });
+    if (!selectedName) return getRandomCharacter();
 
     const match = CHARACTERS.find(
-      (c) => c.name.toLowerCase() === selectedName?.toLowerCase()
+      (c) => c.name.toLowerCase() === selectedName.toLowerCase()
     );
 
-    return match || CHARACTERS[Math.floor(Math.random() * CHARACTERS.length)];
+    return match || getRandomCharacter();
   } catch (error) {
     console.error('Character selection exception:', error);
-    return CHARACTERS[Math.floor(Math.random() * CHARACTERS.length)];
+    return getRandomCharacter();
   }
 }
 
-// Call OpenRouter API to rewrite message in character's voice
+// Rewrite message in character's voice via LLM
 async function rewriteInCharacterVoice(
   message: string,
   character: typeof CHARACTERS[0],
   source?: string,
   severity?: string
 ): Promise<string> {
-  const apiKey = process.env.OPENROUTER_API_KEY;
-
-  if (!apiKey) {
-    // Fallback: simple character-style wrapper if no API key
-    const catchphrase = character.catchphrases[Math.floor(Math.random() * character.catchphrases.length)];
-    return `${catchphrase} ${message}`;
-  }
-
   const severityContext = severity ? `The severity is ${severity}, so adjust your tone accordingly (more urgent for critical/error).` : '';
   const sourceContext = source ? `This notification is from: ${source}.` : '';
 
@@ -151,39 +153,15 @@ Original message: "${message}"
 Respond with ONLY the rewritten message, nothing else.`;
 
   try {
-    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-        'HTTP-Referer': 'https://sopranos-as-a-service.vercel.app',
-        'X-Title': 'Sopranos as a Service',
-      },
-      body: JSON.stringify({
-        model: 'anthropic/claude-sonnet-4',
-        messages: [
-          { role: 'user', content: prompt }
-        ],
-        max_tokens: 256,
-        temperature: 0.8,
-      }),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('OpenRouter API error:', errorText);
-      // Fallback on error
-      const catchphrase = character.catchphrases[Math.floor(Math.random() * character.catchphrases.length)];
-      return `${catchphrase} ${message}`;
-    }
-
-    const data = await response.json();
-    return data.choices?.[0]?.message?.content || message;
+    const result = await callOpenRouter(prompt);
+    if (result) return result;
   } catch (error) {
-    console.error('OpenRouter API exception:', error);
-    const catchphrase = character.catchphrases[Math.floor(Math.random() * character.catchphrases.length)];
-    return `${catchphrase} ${message}`;
+    console.error('Rewrite exception:', error);
   }
+
+  // Fallback: prepend a catchphrase
+  const catchphrase = character.catchphrases[Math.floor(Math.random() * character.catchphrases.length)];
+  return `${catchphrase} ${message}`;
 }
 
 // Search Tenor for a Sopranos GIF
