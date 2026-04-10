@@ -2,6 +2,8 @@
 
 A Vercel Edge Function that rewrites your notifications in the voice of random Sopranos characters and posts them to Discord with matching GIFs.
 
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FBrettKinny%2Fsaas&env=OPENROUTER_API_KEY&envDescription=API%20keys%20needed%20for%20SaaS&envLink=https%3A%2F%2Fopenrouter.ai%2Fkeys)
+
 ## Features
 
 - Rewrites messages using Claude Sonnet via OpenRouter API in the voice of:
