@@ -54,9 +54,69 @@ interface NotifyRequest {
   severity?: 'info' | 'warning' | 'error' | 'critical';
 }
 
-// Get a random character
-function getRandomCharacter() {
-  return CHARACTERS[Math.floor(Math.random() * CHARACTERS.length)];
+// Analyze message sentiment and pick the best-matching character via LLM
+async function selectCharacterBySentiment(
+  message: string,
+  source?: string,
+  severity?: string
+): Promise<typeof CHARACTERS[0]> {
+  const apiKey = process.env.OPENROUTER_API_KEY;
+
+  if (!apiKey) {
+    // Fallback to random if no API key
+    return CHARACTERS[Math.floor(Math.random() * CHARACTERS.length)];
+  }
+
+  const characterDescriptions = CHARACTERS.map(
+    (c) => `- ${c.name}: ${c.traits}`
+  ).join('\n');
+
+  const severityContext = severity ? ` The severity level is "${severity}".` : '';
+  const sourceContext = source ? ` It comes from: ${source}.` : '';
+
+  const prompt = `Analyze the sentiment and tone of this notification message, then pick the Sopranos character who would react to it most fittingly or funnily.
+
+Message: "${message}"${severityContext}${sourceContext}
+
+Available characters:
+${characterDescriptions}
+
+Respond with ONLY the character's full name, nothing else. Pick the character whose personality best matches the vibe of this message — e.g. paranoid messages for Paulie, dramatic ones for Christopher, authority/power issues for Tony, old-school gripes for Junior, etc.`;
+
+  try {
+    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+        'HTTP-Referer': 'https://sopranos-as-a-service.vercel.app',
+        'X-Title': 'Sopranos as a Service',
+      },
+      body: JSON.stringify({
+        model: 'anthropic/claude-sonnet-4',
+        messages: [{ role: 'user', content: prompt }],
+        max_tokens: 50,
+        temperature: 0.5,
+      }),
+    });
+
+    if (!response.ok) {
+      console.error('Character selection API error:', await response.text());
+      return CHARACTERS[Math.floor(Math.random() * CHARACTERS.length)];
+    }
+
+    const data = await response.json();
+    const selectedName = data.choices?.[0]?.message?.content?.trim();
+
+    const match = CHARACTERS.find(
+      (c) => c.name.toLowerCase() === selectedName?.toLowerCase()
+    );
+
+    return match || CHARACTERS[Math.floor(Math.random() * CHARACTERS.length)];
+  } catch (error) {
+    console.error('Character selection exception:', error);
+    return CHARACTERS[Math.floor(Math.random() * CHARACTERS.length)];
+  }
 }
 
 // Call OpenRouter API to rewrite message in character's voice
@@ -293,10 +353,10 @@ export default async function handler(request: Request): Promise<Response> {
     );
   }
 
-  // Pick a random character
-  const character = getRandomCharacter();
+  // Analyze sentiment and pick the best character for this message
+  const character = await selectCharacterBySentiment(body.message, body.source, body.severity);
 
-  // Run OpenRouter and Tenor API calls in parallel
+  // Run rewrite and GIF search in parallel
   const [rewrittenMessage, gifUrl] = await Promise.all([
     rewriteInCharacterVoice(body.message, character, body.source, body.severity),
     searchSopranosGif(character, body.severity),
