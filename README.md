@@ -74,7 +74,7 @@ Set these in your Vercel project settings:
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `OPENROUTER_API_KEY` | No | API key from [OpenRouter](https://openrouter.ai/keys). Without it, character selection is random and messages get a catchphrase prefix instead of a full rewrite. |
-| `TENOR_API_KEY` | No | API key from [Tenor](https://developers.google.com/tenor/guides/quickstart). Has public fallback. |
+| `TENOR_API_KEY` | No | Your own API key from [Tenor](https://developers.google.com/tenor/guides/quickstart). Without it, posts will be sent without a GIF. You must supply your own key — there is no shared fallback. |
 
 ## Deployment
 

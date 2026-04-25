@@ -166,8 +166,8 @@ Respond with ONLY the rewritten message, nothing else.`;
 
 // Search Tenor for a Sopranos GIF
 async function searchSopranosGif(character: typeof CHARACTERS[0], severity?: string): Promise<string | null> {
-  // Public Tenor API key fallback (limited but works for basic usage)
-  const apiKey = process.env.TENOR_API_KEY || 'REDACTED_TENOR_KEY';
+  const apiKey = process.env.TENOR_API_KEY;
+  if (!apiKey) return null;
 
   // Build search query based on character and mood
   const moodMap: Record<string, string> = {
